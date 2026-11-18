@@ -1,0 +1,16 @@
+# Parameters for the nodes of fossbot_control_interface.
+# Loaded by launch/interface.launch.py (override with params_file:=<path>).
+
+click_teleop:
+  ros__parameters:
+    image_topic: /user_cam/image_raw   # camera shown in the click window
+    cmd_vel_topic: /cmd_vel
+    max_linear_speed: 0.2              # [m/s] at the top/bottom edge of the window
+    min_linear_speed: 0.05             # [m/s] just outside the dead zone
+    dead_zone: 0.05                    # fraction of half-height ignored around the centre line
+    proportional_speed: true           # false = always max_linear_speed
+    move_duration: 1.0                 # [s] how long one click drives the robot
+    publish_rate: 20.0                 # [Hz] real FOSSBot stops after 0.5 s without /cmd_vel
+    window_width: 640
+    window_height: 480
+    enable_motors_on_start: false      # set by the launch file (use_real_robot:=true)

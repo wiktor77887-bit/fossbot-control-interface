@@ -1,0 +1,25 @@
+# colcon
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# rosbags and large media (keep the demo GIF in docs/)
+bags/
+*.mcap
+*.db3
+*.mp4
+
+# models downloaded at runtime
+*.task
+
+# editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

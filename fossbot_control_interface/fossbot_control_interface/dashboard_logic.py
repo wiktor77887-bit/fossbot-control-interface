@@ -1,7 +1,7 @@
 """Pure data handling for the dashboard (no ROS or GUI imports, easy to unit test)."""
 
-import math
 from collections import deque
+import math
 
 
 def quaternion_to_yaw(x: float, y: float, z: float, w: float) -> float:
@@ -33,7 +33,8 @@ class TimeSeries:
         return len(self._samples)
 
     def columns(self, now: float = None):
-        """Return ([t - now ...], [value_1 ...], ...): times relative to `now` (<= 0).
+        """
+        Return ([t - now ...], [value_1 ...], ...): times relative to `now` (<= 0).
 
         `now` defaults to the newest sample. Samples older than `history` are dropped.
         """
@@ -81,7 +82,8 @@ class Trajectory:
 
 
 def square_limits(xs, ys, margin: float = 0.3, min_size: float = 1.0):
-    """Return (x_min, x_max, y_min, y_max): a square window around all points.
+    """
+    Return (x_min, x_max, y_min, y_max): a square window around all points.
 
     A square keeps the aspect ratio 1:1 so the drawn path is not distorted.
     """
@@ -96,7 +98,8 @@ def square_limits(xs, ys, margin: float = 0.3, min_size: float = 1.0):
 
 
 def update_square_limits(limits, xs, ys, margin: float = 0.3, min_size: float = 1.0):
-    """Keep `limits` while all points stay at least margin/2 inside them, else recompute.
+    """
+    Keep `limits` while all points stay at least margin/2 inside them, else recompute.
 
     Changing axis limits forces a full (slow) redraw of the plot, so the view
     only jumps when the robot gets close to its edge.
@@ -113,7 +116,8 @@ def update_square_limits(limits, xs, ys, margin: float = 0.3, min_size: float = 
 
 
 def nice_ceil(value: float, minimum: float = 0.05) -> float:
-    """Smallest number of the form {1, 2, 5} * 10^k that is >= value (and >= minimum).
+    """
+    Return the smallest number of the form {1, 2, 5} * 10^k that is >= value (and >= minimum).
 
     Used for the velocity axes, so their range changes in a few discrete steps
     instead of on every frame.

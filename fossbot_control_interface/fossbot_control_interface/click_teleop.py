@@ -1,4 +1,5 @@
-"""Click-based teleoperation for FOSSBot.
+"""
+Click-based teleoperation for FOSSBot.
 
 Shows a window (camera image if available, a plain canvas otherwise). Clicking
 above the horizontal centre line drives the robot forward, clicking below drives
@@ -10,16 +11,15 @@ Keys in the window:  SPACE / s - stop,  q / ESC - quit.
 import time
 
 import cv2
+from fossbot_control_interface.click_logic import click_to_linear_velocity
+from fossbot_control_interface.image_utils import image_to_bgr
+from geometry_msgs.msg import Twist
 import numpy as np
 import rclpy
-from geometry_msgs.msg import Twist
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import Image
 from std_srvs.srv import SetBool
-
-from fossbot_control_interface.click_logic import click_to_linear_velocity
-from fossbot_control_interface.image_utils import image_to_bgr
 
 WINDOW_NAME = 'FOSSBot click teleop'
 
@@ -105,7 +105,8 @@ class ClickTeleop(Node):
         if self.motors_enabled:
             return
         if not self.enable_client.service_is_ready():
-            self.get_logger().warn('Waiting for /fossbot/enable_motors ...', throttle_duration_sec=5.0)
+            self.get_logger().warn(
+                'Waiting for /fossbot/enable_motors ...', throttle_duration_sec=5.0)
             return
         future = self.enable_client.call_async(SetBool.Request(data=True))
         future.add_done_callback(self._on_motors_enabled)
@@ -181,13 +182,21 @@ class ClickTeleop(Node):
         cv2.putText(canvas, 'BACKWARD', (10, h - 40), font, 0.6, (0, 0, 255), 2, cv2.LINE_AA)
 
         moving = now < self.move_until
-        status = f'v = {self.speed:+.2f} m/s  ({self.move_until - now:.1f} s)' if moving else 'stopped'
+        if moving:
+            status = f'v = {self.speed:+.2f} m/s  ({self.move_until - now:.1f} s)'
+        else:
+            status = 'stopped'
         cv2.putText(canvas, status, (w - 260, 25), font, 0.55, (255, 255, 255), 1, cv2.LINE_AA)
         cv2.putText(canvas, 'SPACE: stop   q: quit', (w - 200, h - 15), font, 0.45,
                     (200, 200, 200), 1, cv2.LINE_AA)
 
         if self.last_click is not None:
-            colour = (0, 255, 0) if self.speed > 0 else (0, 0, 255) if self.speed < 0 else (0, 200, 255)
+            if self.speed > 0:
+                colour = (0, 255, 0)
+            elif self.speed < 0:
+                colour = (0, 0, 255)
+            else:
+                colour = (0, 200, 255)
             cv2.circle(canvas, self.last_click, 8, colour, 2)
 
 

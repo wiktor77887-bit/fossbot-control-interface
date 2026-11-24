@@ -1,9 +1,8 @@
 from types import SimpleNamespace
 
+from fossbot_control_interface.image_utils import image_to_bgr
 import numpy as np
 import pytest
-
-from fossbot_control_interface.image_utils import image_to_bgr
 
 
 def make_msg(array, encoding, step=None):

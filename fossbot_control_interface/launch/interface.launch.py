@@ -1,6 +1,7 @@
-"""Start the FOSSBot control interface.
+"""
+Start the FOSSBot control interface.
 
-Examples:
+Usage, e.g.:
     ros2 launch fossbot_control_interface interface.launch.py
     ros2 launch fossbot_control_interface interface.launch.py start_camera:=true
     ros2 launch fossbot_control_interface interface.launch.py use_real_robot:=true

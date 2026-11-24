@@ -1,6 +1,5 @@
-import pytest
-
 from fossbot_control_interface.click_logic import click_to_linear_velocity
+import pytest
 
 H = 480
 

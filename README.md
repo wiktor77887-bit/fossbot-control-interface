@@ -1,5 +1,7 @@
 # FOSSBot Control Interface
 
+[![CI](https://github.com/wiktor77887-bit/fossbot-control-interface/actions/workflows/ci.yml/badge.svg)](https://github.com/wiktor77887-bit/fossbot-control-interface/actions/workflows/ci.yml)
+
 ROS 2 (Jazzy) interface for driving the [FOSSBot](https://github.com/eellak/fossbot) mobile robot —
 by clicking in a camera window, by hand gestures, with a live dashboard of the robot's state.
 Works the same in the Gazebo simulation and on the physical robot, because both expose the
@@ -147,7 +149,12 @@ Defined in [`config/params.yaml`](fossbot_control_interface/config/params.yaml).
 ```bash
 cd ~/ros2_ws
 colcon test --packages-select fossbot_control_interface --event-handlers console_direct+
+colcon test-result --verbose
 ```
+
+Besides the unit tests this runs the ROS 2 style linters `ament_flake8` and `ament_pep257`.
+GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) builds the package and
+runs the same tests in the `ros:jazzy` container on every push and pull request.
 
 ## Project structure
 
@@ -161,7 +168,7 @@ fossbot_control_interface/
 │   ├── dashboard.py                 # ROS 2 node: matplotlib dashboard window
 │   ├── dashboard_logic.py           # time series, trajectory, axis limits (unit tested)
 │   └── image_utils.py               # sensor_msgs/Image -> OpenCV without cv_bridge
-└── test/                            # pytest unit tests
+└── test/                            # pytest unit tests + ament lint tests
 ```
 
 ## License

@@ -1,4 +1,5 @@
-"""Live dashboard for FOSSBot: camera image, XY trajectory and velocity plots.
+"""
+Live dashboard for FOSSBot: camera image, XY trajectory and velocity plots.
 
 Read-only: it only subscribes (/odom, /cmd_vel, camera), so it can run next to
 any controller - click teleop, gestures, keyboard teleop or Nav2.
@@ -15,18 +16,17 @@ import signal
 import threading
 import time
 
-import rclpy
+from fossbot_control_interface.dashboard_logic import (
+    nice_ceil, quaternion_to_yaw, TimeSeries, Trajectory, update_square_limits)
+from fossbot_control_interface.image_utils import image_to_bgr
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
+import rclpy
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.signals import SignalHandlerOptions
 from sensor_msgs.msg import Image
-
-from fossbot_control_interface.dashboard_logic import (
-    TimeSeries, Trajectory, nice_ceil, quaternion_to_yaw, update_square_limits)
-from fossbot_control_interface.image_utils import image_to_bgr
 
 # A command older than this is drawn as a gap ("nobody is commanding"), not as
 # zero: the real FOSSBot stops after 0.5 s of silence, but the Gazebo DiffDrive
@@ -113,7 +113,8 @@ class DashboardNode(Node):
 
 
 class DashboardWindow:
-    """Matplotlib figure; all methods run in the main (GUI) thread.
+    """
+    Matplotlib figure; all methods run in the main (GUI) thread.
 
     Rendering uses blitting: axes, ticks, labels and legends (text is the slow
     part of matplotlib) are drawn once and cached as a background bitmap; every
@@ -281,7 +282,7 @@ class DashboardWindow:
         self.ax_traj.set_ylim(limits[2], limits[3])
 
     def _update_trajectory(self, xs, ys, pose) -> bool:
-        """Returns True if the axis limits changed (a full redraw is needed)."""
+        """Update the artists; return True if the axis limits changed (full redraw needed)."""
         self.path_line.set_data(xs, ys)
         self.start_dot.set_data(xs[:1], ys[:1])
         if pose is None:
@@ -298,7 +299,7 @@ class DashboardWindow:
 
     @staticmethod
     def _update_velocity(ax, cmd_line, odom_line, t_cmd, v_cmd, t_odom, v_odom) -> bool:
-        """Returns True if the axis limits changed (a full redraw is needed)."""
+        """Update the artists; return True if the axis limits changed (full redraw needed)."""
         cmd_line.set_data(t_cmd, v_cmd)
         odom_line.set_data(t_odom, v_odom)
         values = [abs(v) for v in list(v_cmd) + list(v_odom) if not math.isnan(v)]

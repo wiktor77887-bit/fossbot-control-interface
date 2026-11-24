@@ -1,4 +1,5 @@
-"""Convert sensor_msgs/Image to an OpenCV BGR array without cv_bridge.
+"""
+Convert sensor_msgs/Image to an OpenCV BGR array without cv_bridge.
 
 cv_bridge is compiled against the system NumPy, which often breaks after
 `pip install mediapipe` pulls in a different NumPy version. Doing the
@@ -49,7 +50,10 @@ def image_to_bgr(msg) -> np.ndarray:
 
     # rows may be padded (step > width * channels), so cut each row first
     image = buf[:height * step].reshape(height, step)[:, :row_bytes]
-    image = image.reshape(height, width, channels) if channels > 1 else image.reshape(height, width)
+    if channels > 1:
+        image = image.reshape(height, width, channels)
+    else:
+        image = image.reshape(height, width)
 
     if conversion is None:
         return np.ascontiguousarray(image)

@@ -1,9 +1,8 @@
 import math
 
-import pytest
-
 from fossbot_control_interface.dashboard_logic import (
-    TimeSeries, Trajectory, nice_ceil, quaternion_to_yaw, square_limits, update_square_limits)
+    nice_ceil, quaternion_to_yaw, square_limits, TimeSeries, Trajectory, update_square_limits)
+import pytest
 
 
 def yaw_quaternion(yaw):

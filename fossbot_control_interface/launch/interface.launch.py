@@ -28,6 +28,7 @@ def generate_launch_description():
     video_device = LaunchConfiguration('video_device')
     start_dashboard = LaunchConfiguration('start_dashboard')
     start_click_teleop = LaunchConfiguration('start_click_teleop')
+    start_gestures = LaunchConfiguration('start_gestures')
 
     return LaunchDescription([
         DeclareLaunchArgument('params_file', default_value=default_params,
@@ -42,6 +43,9 @@ def generate_launch_description():
                               description='Start the live dashboard window'),
         DeclareLaunchArgument('start_click_teleop', default_value='true',
                               description='Start the click teleoperation window'),
+        DeclareLaunchArgument('start_gestures', default_value='true',
+                              description='Start gesture control (needs MediaPipe and the '
+                                          'hand_landmarker.task model)'),
 
         # Optional camera driver (external package). Normally it runs in the
         # driver container; this switch is handy for running everything locally.
@@ -67,6 +71,18 @@ def generate_launch_description():
             executable='click_teleop',
             name='click_teleop',
             condition=IfCondition(start_click_teleop),
+            parameters=[
+                params_file,
+                {'enable_motors_on_start': ParameterValue(use_real_robot, value_type=bool)},
+            ],
+            output='screen',
+        ),
+
+        Node(
+            package='fossbot_control_interface',
+            executable='gesture_control',
+            name='gesture_control',
+            condition=IfCondition(start_gestures),
             parameters=[
                 params_file,
                 {'enable_motors_on_start': ParameterValue(use_real_robot, value_type=bool)},

@@ -15,6 +15,25 @@ click_teleop:
     window_height: 480
     enable_motors_on_start: false      # set by the launch file (use_real_robot:=true)
 
+gesture_control:
+  ros__parameters:
+    image_topic: /user_cam/image_raw   # camera that sees the user's hand
+    cmd_vel_topic: /cmd_vel
+    odom_topic: /odom                  # yaw feedback: the rotation is closed-loop
+    model_path: ~/hand_landmarker.task # MediaPipe hand landmarker model
+    max_angular_speed: 0.8             # [rad/s]
+    min_angular_speed: 0.2             # [rad/s] reached at the very end of the turn
+    slow_zone: 0.6                     # [rad] slow down over the last ~35 deg
+    angle_tolerance: 0.02              # [rad] stop when this close to 360 deg
+    hold_frames: 5                     # frames a gesture must be held to trigger
+    finger_ratio: 1.2                  # tip/PIP distance from the wrist for "extended"
+    publish_rate: 20.0                 # [Hz] real FOSSBot stops after 0.5 s without /cmd_vel
+    odom_timeout: 0.5                  # [s] abort when /odom goes silent
+    rotation_timeout: 30.0             # [s] abort a rotation that takes too long
+    show_window: true                  # preview with the hand skeleton
+    mirror_preview: true               # selfie view in the preview window
+    enable_motors_on_start: false      # set by the launch file (use_real_robot:=true)
+
 dashboard:
   ros__parameters:
     odom_topic: /odom

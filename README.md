@@ -16,7 +16,8 @@ Project for the *Introduction to Robotics* course at Poznań University of Techn
 - [x] **Launch file + YAML parameters** – one command starts all nodes with their settings
 - [x] **Live dashboard** – camera image, XY trajectory and commanded vs measured velocity
       in real time
-- [ ] **Gesture control** – two hand gestures (MediaPipe) trigger 360° rotations
+- [x] **Gesture control** – two hand gestures (MediaPipe) trigger 360° rotations,
+      closed-loop on the `/odom` yaw
 - [x] **Docker Compose** – profiles `sim` (Gazebo) and `real` (+ optional `bridge`) with an
       interface container and the laptop camera
 
@@ -25,7 +26,10 @@ Project for the *Introduction to Robotics* course at Poznań University of Techn
 ```mermaid
 flowchart LR
     cam[usb_cam<br/>laptop camera] -- /user_cam/image_raw --> click[click_teleop]
+    cam -- /user_cam/image_raw --> gest[gesture_control<br/>MediaPipe]
     click -- /cmd_vel --> robot[FOSSBot<br/>Gazebo sim or fossbot_bridge]
+    gest -- /cmd_vel --> robot
+    robot -- /odom --> gest
     click -. /fossbot/enable_motors .-> robot
     robot -- /odom --> dash[dashboard]
     robot -- /camera/image_raw --> dash
@@ -41,6 +45,15 @@ gestures, `teleop_twist_keyboard`, Nav2).
 - Python packages: `opencv`, `numpy`, `matplotlib`, `PyQt5` (all installed with ROS desktop)
 - Optional: [`usb_cam`](https://github.com/ros-drivers/usb_cam) for the laptop camera
   (`sudo apt install ros-jazzy-usb-cam`)
+- For gesture control: MediaPipe and the hand landmarker model (already in the Docker image):
+  ```bash
+  sudo apt install python3-pip libgles2 libegl1
+  pip install --break-system-packages mediapipe "numpy==$(python3 -c 'import numpy; print(numpy.__version__)')"
+  pip uninstall --break-system-packages -y opencv-contrib-python   # keep the system OpenCV
+  wget -O ~/hand_landmarker.task https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
+  ```
+  Pinning NumPy keeps the system matplotlib and OpenCV working. Without MediaPipe start the
+  interface with `start_gestures:=false`.
 
 ## Build
 
@@ -109,7 +122,8 @@ ros2 launch fossbot_control_interface interface.launch.py use_real_robot:=true s
 `use_real_robot:=true` calls `/fossbot/enable_motors` automatically. The node publishes
 `/cmd_vel` at 20 Hz while moving, because the robot stops after 0.5 s without commands.
 
-Start only some windows with `start_click_teleop:=false` or `start_dashboard:=false`.
+Start only some windows with `start_click_teleop:=false`, `start_gestures:=false` or
+`start_dashboard:=false`.
 
 ### Controls (click window)
 
@@ -119,6 +133,42 @@ Start only some windows with `start_click_teleop:=false` or `start_dashboard:=fa
 | Left click below the line | Drive backward for `move_duration` seconds |
 | `SPACE` / `s` | Stop |
 | `q` / `ESC` / close window | Quit (sends a zero `Twist`) |
+
+### Gesture control
+
+| Gesture | Action |
+|---|---|
+| ✌ **Victory** – index + middle finger, ring and pinky folded | turn 360° left (counter-clockwise) |
+| 🤘 **Horns** – index + pinky, middle and ring folded | turn 360° right (clockwise) |
+| ✋ **Open palm** – all four fingers | abort the rotation |
+
+None of them is used in Lab 08 (index = forward, open hand = back, thumb = left/right).
+The thumb is ignored. A finger counts as extended when its tip is clearly farther from the
+wrist than its middle joint, which works for any hand rotation. A gesture must be held for
+`hold_frames` frames (≈ 0.3 s) and fires once: to turn again, change the pose first.
+
+The turn is **closed-loop on the yaw from `/odom`**, not timed, because Gazebo runs at about
+half real time and the real robot does not turn at exactly the commanded speed. The yaw is
+summed from wrapped differences, so the ±180° jump does not matter. The speed ramps down over
+the last `slow_zone` radians and the turn stops within `angle_tolerance` of 360°.
+
+Safety:
+- `/cmd_vel` is published at 20 Hz during the whole turn, because the real robot stops
+  after 0.5 s without commands.
+- A zero `Twist` is sent at the end, on abort, and on shutdown (Ctrl+C or SIGTERM), because the
+  Gazebo DiffDrive keeps executing the last command. After that the node stays silent and does
+  not fight `click_teleop`.
+- The turn aborts when `/odom` stops for 0.5 s or after `rotation_timeout`. With
+  `use_real_robot:=true`, turns start only after `/fossbot/enable_motors` succeeded.
+
+Window keys: `SPACE` / `s` – abort, `q` – quit. Without a camera the turn can be started from
+the terminal:
+
+```bash
+ros2 service call /gesture_control/rotate_left std_srvs/srv/Trigger
+ros2 service call /gesture_control/rotate_right std_srvs/srv/Trigger
+ros2 service call /gesture_control/stop std_srvs/srv/Trigger
+```
 
 ### Dashboard
 
@@ -158,6 +208,23 @@ Defined in [`config/params.yaml`](fossbot_control_interface/config/params.yaml).
 | `publish_rate` | `20.0` | `/cmd_vel` rate while moving [Hz] |
 | `enable_motors_on_start` | `false` | Set by `use_real_robot:=true` |
 
+**gesture_control**
+
+| Parameter | Default | Description |
+|---|---|---|
+| `image_topic` | `/user_cam/image_raw` | Camera that sees the hand |
+| `odom_topic` | `/odom` | Yaw feedback for the turn |
+| `model_path` | `~/hand_landmarker.task` | MediaPipe hand landmarker model |
+| `max_angular_speed` / `min_angular_speed` | `0.8` / `0.2` | Turn speed [rad/s], full / at the end |
+| `slow_zone` | `0.6` | Slow down over the last [rad] of the turn |
+| `angle_tolerance` | `0.02` | Stop this close to 360° [rad] |
+| `hold_frames` | `5` | Frames a gesture must be held |
+| `finger_ratio` | `1.2` | Tip/joint distance ratio for an extended finger |
+| `publish_rate` | `20.0` | `/cmd_vel` rate during the turn [Hz] |
+| `odom_timeout` / `rotation_timeout` | `0.5` / `30.0` | Abort limits [s] |
+| `show_window` / `mirror_preview` | `true` / `true` | Preview window with the hand skeleton |
+| `enable_motors_on_start` | `false` | Set by `use_real_robot:=true` |
+
 **dashboard**
 
 | Parameter | Default | Description |
@@ -194,7 +261,7 @@ runs the same tests in the `ros:jazzy` container on every push and pull request.
 ```
 compose.yaml                         # Docker Compose: profiles sim / real / bridge
 compose.mdns.yaml                    # mounts the host Avahi socket for .local names
-docker/Dockerfile                    # interface image (ros:jazzy + usb_cam)
+docker/Dockerfile                    # interface image (ros:jazzy + usb_cam + MediaPipe)
 fossbot_control_interface/
 ├── config/params.yaml               # node parameters
 ├── launch/interface.launch.py       # starts all nodes
@@ -202,6 +269,8 @@ fossbot_control_interface/
 │   ├── click_teleop.py              # ROS 2 node: click window -> /cmd_vel
 │   ├── click_logic.py               # pure click -> velocity mapping (unit tested)
 │   ├── dashboard.py                 # ROS 2 node: matplotlib dashboard window
+│   ├── gesture_control.py           # ROS 2 node: MediaPipe gestures -> 360° turns
+│   ├── gesture_logic.py             # gesture rules, debouncing, yaw tracking (unit tested)
 │   ├── dashboard_logic.py           # time series, trajectory, axis limits (unit tested)
 │   └── image_utils.py               # sensor_msgs/Image -> OpenCV without cv_bridge
 └── test/                            # pytest unit tests + ament lint tests

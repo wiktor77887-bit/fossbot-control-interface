@@ -25,6 +25,7 @@ setup(
         'console_scripts': [
             'click_teleop = fossbot_control_interface.click_teleop:main',
             'dashboard = fossbot_control_interface.dashboard:main',
+            'gesture_control = fossbot_control_interface.gesture_control:main',
         ],
     },
 )

@@ -13,6 +13,13 @@
 x-ros: &ros
   network_mode: host
   ipc: host
+  # PID 1 in a container ignores signals it has no handler for, so `docker compose
+  # stop` would SIGKILL ros2 launch after the timeout and no node could send its
+  # final zero Twist. A tiny init process forwards the signal instead.
+  init: true
+  # ros2 launch shuts its nodes down cleanly on SIGINT (Ctrl+C); on SIGTERM it
+  # just dies and leaves them to be killed.
+  stop_signal: SIGINT
 
 x-gui-env: &gui-env
   DISPLAY: ${DISPLAY:-:0}

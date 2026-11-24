@@ -23,3 +23,6 @@ bags/
 .idea/
 Thumbs.db
 .DS_Store
+
+# local Docker Compose settings (copy of .env.example)
+.env

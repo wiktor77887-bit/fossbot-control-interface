@@ -17,7 +17,8 @@ Project for the *Introduction to Robotics* course at Poznań University of Techn
 - [x] **Live dashboard** – camera image, XY trajectory and commanded vs measured velocity
       in real time
 - [ ] **Gesture control** – two hand gestures (MediaPipe) trigger 360° rotations
-- [ ] **Docker Compose** – driver container (sim *or* real robot + camera) and an interface container
+- [x] **Docker Compose** – profiles `sim` (Gazebo) and `real` (+ optional `bridge`) with an
+      interface container and the laptop camera
 
 ## Architecture
 
@@ -53,7 +54,39 @@ source install/setup.bash
 
 ## Run
 
-### In simulation
+### With Docker Compose (recommended)
+
+Nothing to build by hand: [`compose.yaml`](compose.yaml) builds the interface image
+([`docker/Dockerfile`](docker/Dockerfile), `ros:jazzy` + `usb_cam`) and starts it next to the
+simulator or the robot bridge. Settings go to `.env`:
+
+```bash
+cp .env.example .env        # robot address, mDNS, ROS_DOMAIN_ID, camera
+xhost +local:docker         # once per login: let containers open windows
+```
+
+| Command | Starts |
+|---|---|
+| `docker compose --profile sim up` | Gazebo simulation (`ros2_fossbot_edu` image) + interface |
+| `docker compose --profile real --profile bridge up` | [fossbot-ros2-bridge](https://github.com/LRMPUT/fossbot-ros2-bridge) on this laptop + interface |
+| `docker compose --profile real up` | interface only, the bridge already runs on another computer |
+
+- **One bridge per robot.** The bridge for a given robot may run on only one computer at a time,
+  so it has its own `bridge` profile. Do not start it together with the bridge's own `run.sh`.
+- The bridge image is built from a checkout of its repository (`FOSSBOT_BRIDGE_DIR`, default
+  `../fossbot-ros2-bridge`), the simulator image from `FOSSBOT_SIM_DIR`; Compose builds them only
+  if they are missing.
+- **mDNS:** `.local` robot names (`FOSSBOT_HOST=fossbotrpi1.local`) need Avahi on the host and
+  the `COMPOSE_FILE=compose.yaml:compose.mdns.yaml` line in `.env`. Without Avahi, put the robot's
+  IP address in `FOSSBOT_HOST` and remove that line.
+- All containers use host networking and IPC (DDS discovery, shared memory, UDP telemetry from the
+  robot). The simulator limits discovery to `localhost`, so the `sim` interface does the same.
+- The laptop camera (`/dev/video0`) is published as `/user_cam/image_raw`; the robot's own camera
+  stays on `/camera/image_raw`. Without a camera set `START_CAMERA=false` and `VIDEO_DEVICE=/dev/null`.
+
+Stop with `Ctrl+C` or `docker compose --profile sim --profile real --profile bridge down`.
+
+### In simulation (local ROS 2)
 
 ```bash
 # terminal 1 – simulator (inside FOSSBotEduSim)
@@ -63,7 +96,7 @@ ros2 launch fossbot_educational_description single.launch.py world:=simple_shape
 ros2 launch fossbot_control_interface interface.launch.py start_camera:=true
 ```
 
-### On the real robot
+### On the real robot (local ROS 2)
 
 Start the [fossbot-ros2-bridge](https://github.com/LRMPUT/fossbot-ros2-bridge) as described in the lab
 instructions, then in every terminal:
@@ -159,6 +192,9 @@ runs the same tests in the `ros:jazzy` container on every push and pull request.
 ## Project structure
 
 ```
+compose.yaml                         # Docker Compose: profiles sim / real / bridge
+compose.mdns.yaml                    # mounts the host Avahi socket for .local names
+docker/Dockerfile                    # interface image (ros:jazzy + usb_cam)
 fossbot_control_interface/
 ├── config/params.yaml               # node parameters
 ├── launch/interface.launch.py       # starts all nodes

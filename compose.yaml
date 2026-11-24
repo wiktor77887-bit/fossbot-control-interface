@@ -1,0 +1,106 @@
+# FOSSBot control interface in Docker.
+#
+#   docker compose --profile sim up                    # Gazebo simulation + interface
+#   docker compose --profile real --profile bridge up  # real robot, the bridge runs here
+#   docker compose --profile real up                   # real robot, the bridge runs elsewhere
+#
+# Settings (robot address, mDNS, domain ID, camera) live in .env; see .env.example.
+# GUI windows need X access for local containers once per login:  xhost +local:docker
+
+# Shared by every container: host networking and IPC are required for DDS
+# discovery and shared-memory transport between containers (and for the
+# bridge, which receives UDP telemetry from the robot on this machine).
+x-ros: &ros
+  network_mode: host
+  ipc: host
+
+x-gui-env: &gui-env
+  DISPLAY: ${DISPLAY:-:0}
+  QT_X11_NO_MITSHM: "1"
+  XAUTHORITY: /root/.Xauthority
+
+x-gui-volumes: &gui-volumes
+  - /tmp/.X11-unix:/tmp/.X11-unix:rw
+  - ${XAUTHORITY:-/dev/null}:/root/.Xauthority:ro
+
+x-interface: &interface
+  <<: *ros
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  image: fossbot_control_interface:jazzy
+  volumes: *gui-volumes
+  # No /dev/dri here: render the windows in software instead of failing over to it noisily.
+  environment: &interface-env
+    <<: *gui-env
+    LIBGL_ALWAYS_SOFTWARE: "1"
+  devices:
+    # Laptop camera for usb_cam (/user_cam/image_raw). Without a camera set
+    # START_CAMERA=false and VIDEO_DEVICE=/dev/null in .env.
+    - ${VIDEO_DEVICE:-/dev/video0}:/dev/video0
+
+services:
+  # ---- simulation ---------------------------------------------------------
+  sim:
+    <<: *ros
+    profiles: [sim]
+    # Built by FOSSBotEduSim/build_image.sh; compose builds it only if missing.
+    build:
+      context: ${FOSSBOT_SIM_DIR:-../Lab_5/FOSSBotEduSim}
+    image: ros2_fossbot_edu
+    shm_size: 1g
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      <<: *gui-env
+      ROS_DOMAIN_ID: ${SIM_ROS_DOMAIN_ID:-0}
+    volumes: *gui-volumes
+    command: >
+      bash -c "source /fossbot_ros2/ws_fossbot/install/setup.bash &&
+      exec ros2 launch fossbot_educational_description single.launch.py
+      world:=${SIM_WORLD:-simple_shapes.sdf} rviz:=false"
+
+  interface-sim:
+    <<: *interface
+    profiles: [sim]
+    depends_on: [sim]
+    environment:
+      <<: *interface-env
+      ROS_DOMAIN_ID: ${SIM_ROS_DOMAIN_ID:-0}
+      # The simulator image limits discovery to this machine; both sides must match.
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+    command: >
+      ros2 launch fossbot_control_interface interface.launch.py
+      start_camera:=${START_CAMERA:-true}
+
+  # ---- real robot ---------------------------------------------------------
+  interface-real:
+    <<: *interface
+    profiles: [real]
+    environment:
+      <<: *interface-env
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-1}
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp   # same as the bridge
+    command: >
+      ros2 launch fossbot_control_interface interface.launch.py
+      use_real_robot:=true start_camera:=${START_CAMERA:-true}
+
+  # Only ONE bridge per robot may run (on one computer). Start this profile only
+  # if nobody else runs the bridge for this robot, and do not also use its run.sh.
+  bridge:
+    <<: *ros
+    profiles: [bridge]
+    build:
+      context: ${FOSSBOT_BRIDGE_DIR:-../fossbot-ros2-bridge}
+    image: fossbot_bridge:jazzy
+    environment:
+      <<: *gui-env
+      FOSSBOT_HOST: ${FOSSBOT_HOST:-}   # robot hostname or IP, from .env
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-1}
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      XDG_RUNTIME_DIR: /tmp/runtime-root
+      LIBGL_ALWAYS_SOFTWARE: ${LIBGL_ALWAYS_SOFTWARE:-1}
+    volumes: *gui-volumes
+    command: >
+      bash -c "mkdir -p -m 700 /tmp/runtime-root &&
+      exec ros2 launch fossbot_bridge bringup.launch.py"

@@ -1,0 +1,8 @@
+# Lets the bridge resolve .local robot names (e.g. fossbotrpi1.local) through
+# the host's Avahi daemon. Enabled from .env with
+#   COMPOSE_FILE=compose.yaml:compose.mdns.yaml
+# Without Avahi, leave it out and put the robot's IP address in FOSSBOT_HOST.
+services:
+  bridge:
+    volumes:
+      - /var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket:ro

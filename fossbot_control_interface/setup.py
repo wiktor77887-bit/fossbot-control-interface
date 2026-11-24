@@ -24,6 +24,7 @@ setup(
     entry_points={
         'console_scripts': [
             'click_teleop = fossbot_control_interface.click_teleop:main',
+            'dashboard = fossbot_control_interface.dashboard:main',
         ],
     },
 )

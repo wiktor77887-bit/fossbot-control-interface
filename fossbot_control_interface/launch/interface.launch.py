@@ -25,6 +25,8 @@ def generate_launch_description():
     use_real_robot = LaunchConfiguration('use_real_robot')
     start_camera = LaunchConfiguration('start_camera')
     video_device = LaunchConfiguration('video_device')
+    start_dashboard = LaunchConfiguration('start_dashboard')
+    start_click_teleop = LaunchConfiguration('start_click_teleop')
 
     return LaunchDescription([
         DeclareLaunchArgument('params_file', default_value=default_params,
@@ -35,6 +37,10 @@ def generate_launch_description():
                               description='Also start usb_cam (/user_cam/image_raw)'),
         DeclareLaunchArgument('video_device', default_value='/dev/video0',
                               description='Camera device used when start_camera:=true'),
+        DeclareLaunchArgument('start_dashboard', default_value='true',
+                              description='Start the live dashboard window'),
+        DeclareLaunchArgument('start_click_teleop', default_value='true',
+                              description='Start the click teleoperation window'),
 
         # Optional camera driver (external package). Normally it runs in the
         # driver container; this switch is handy for running everything locally.
@@ -59,10 +65,20 @@ def generate_launch_description():
             package='fossbot_control_interface',
             executable='click_teleop',
             name='click_teleop',
+            condition=IfCondition(start_click_teleop),
             parameters=[
                 params_file,
                 {'enable_motors_on_start': ParameterValue(use_real_robot, value_type=bool)},
             ],
+            output='screen',
+        ),
+
+        Node(
+            package='fossbot_control_interface',
+            executable='dashboard',
+            name='dashboard',
+            condition=IfCondition(start_dashboard),
+            parameters=[params_file],
             output='screen',
         ),
     ])

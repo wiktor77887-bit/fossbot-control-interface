@@ -12,7 +12,8 @@ Project for the *Introduction to Robotics* course at Poznań University of Techn
 - [x] **Click teleoperation** – click above the centre line to drive forward, below to drive
       backward; speed grows with the distance from the centre
 - [x] **Launch file + YAML parameters** – one command starts all nodes with their settings
-- [ ] **Live dashboard** – velocity, trajectory and camera image in real time
+- [x] **Live dashboard** – camera image, XY trajectory and commanded vs measured velocity
+      in real time
 - [ ] **Gesture control** – two hand gestures (MediaPipe) trigger 360° rotations
 - [ ] **Docker Compose** – driver container (sim *or* real robot + camera) and an interface container
 
@@ -23,12 +24,18 @@ flowchart LR
     cam[usb_cam<br/>laptop camera] -- /user_cam/image_raw --> click[click_teleop]
     click -- /cmd_vel --> robot[FOSSBot<br/>Gazebo sim or fossbot_bridge]
     click -. /fossbot/enable_motors .-> robot
+    robot -- /odom --> dash[dashboard]
+    robot -- /camera/image_raw --> dash
+    click -- /cmd_vel --> dash
 ```
+
+The dashboard only subscribes, so it works next to any controller (click teleop,
+gestures, `teleop_twist_keyboard`, Nav2).
 
 ## Requirements
 
 - Ubuntu 24.04 + ROS 2 Jazzy (or the FOSSBotEduSim container)
-- Python packages: `opencv`, `numpy` (installed with ROS desktop)
+- Python packages: `opencv`, `numpy`, `matplotlib`, `PyQt5` (all installed with ROS desktop)
 - Optional: [`usb_cam`](https://github.com/ros-drivers/usb_cam) for the laptop camera
   (`sudo apt install ros-jazzy-usb-cam`)
 
@@ -67,6 +74,8 @@ ros2 launch fossbot_control_interface interface.launch.py use_real_robot:=true s
 `use_real_robot:=true` calls `/fossbot/enable_motors` automatically. The node publishes
 `/cmd_vel` at 20 Hz while moving, because the robot stops after 0.5 s without commands.
 
+Start only some windows with `start_click_teleop:=false` or `start_dashboard:=false`.
+
 ### Controls (click window)
 
 | Action | Effect |
@@ -75,6 +84,28 @@ ros2 launch fossbot_control_interface interface.launch.py use_real_robot:=true s
 | Left click below the line | Drive backward for `move_duration` seconds |
 | `SPACE` / `s` | Stop |
 | `q` / `ESC` / close window | Quit (sends a zero `Twist`) |
+
+### Dashboard
+
+![dashboard](docs/dashboard.png)
+
+| Panel | Content |
+|---|---|
+| Camera | robot camera (`/camera/image_raw`) |
+| Trajectory | XY path from `/odom`, start point, robot position and heading |
+| Linear / angular velocity | last 20 s: command (`/cmd_vel`, dashed) vs measured (`/odom`) |
+| Status bar | pose, yaw, velocities, distance travelled, camera FPS |
+
+Keys: `r` – reset the trajectory and plots, `q` – quit.
+
+A gap in the command line means nobody is publishing `/cmd_vel`. That is shown on
+purpose instead of drawing zero: the real FOSSBot stops after 0.5 s of silence, but the
+Gazebo DiffDrive plugin keeps executing the **last** command – the measured line makes
+that visible.
+
+The dashboard uses matplotlib with *blitting*: axes, labels and legends are rendered once
+and cached, only the data is redrawn every frame (≈ 55 ms instead of ≈ 360 ms per frame on
+a laptop without a GPU while Gazebo is running). Lower `refresh_rate` to save more CPU.
 
 ## Parameters
 
@@ -92,6 +123,25 @@ Defined in [`config/params.yaml`](fossbot_control_interface/config/params.yaml).
 | `publish_rate` | `20.0` | `/cmd_vel` rate while moving [Hz] |
 | `enable_motors_on_start` | `false` | Set by `use_real_robot:=true` |
 
+**dashboard**
+
+| Parameter | Default | Description |
+|---|---|---|
+| `odom_topic` | `/odom` | Pose and measured velocity |
+| `cmd_vel_topic` | `/cmd_vel` | Commanded velocity |
+| `image_topic` | `/camera/image_raw` | Robot camera |
+| `history` | `20.0` | Time span of the velocity plots [s] |
+| `refresh_rate` | `10.0` | GUI refresh rate [Hz] |
+| `image_scale` | `0.5` | Camera image downsampling before drawing |
+| `trajectory_min_step` | `0.01` | Store a path point after moving this far [m] |
+| `trajectory_max_points` | `5000` | Path length limit (oldest points dropped) |
+
+## Notes from testing
+
+- Without a GPU Gazebo runs at a **real-time factor of ≈ 0.5** (measured from `/clock`), so
+  a 1 s click moves the simulated robot half as far as on the real robot. Anything that must
+  reach a target (e.g. a 360° turn) therefore uses `/odom` feedback, not timing.
+
 ## Tests
 
 ```bash
@@ -108,6 +158,8 @@ fossbot_control_interface/
 ├── fossbot_control_interface/
 │   ├── click_teleop.py              # ROS 2 node: click window -> /cmd_vel
 │   ├── click_logic.py               # pure click -> velocity mapping (unit tested)
+│   ├── dashboard.py                 # ROS 2 node: matplotlib dashboard window
+│   ├── dashboard_logic.py           # time series, trajectory, axis limits (unit tested)
 │   └── image_utils.py               # sensor_msgs/Image -> OpenCV without cv_bridge
 └── test/                            # pytest unit tests
 ```

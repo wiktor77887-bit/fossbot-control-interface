@@ -14,3 +14,14 @@ click_teleop:
     window_width: 640
     window_height: 480
     enable_motors_on_start: false      # set by the launch file (use_real_robot:=true)
+
+dashboard:
+  ros__parameters:
+    odom_topic: /odom
+    cmd_vel_topic: /cmd_vel
+    image_topic: /camera/image_raw     # robot camera (the click window shows the user camera)
+    history: 20.0                      # [s] time span of the velocity plots
+    refresh_rate: 10.0                 # [Hz] GUI refresh; keep low on laptops without a GPU
+    image_scale: 0.5                   # camera image is downsampled before drawing
+    trajectory_min_step: 0.01          # [m] store a path point only after moving this far
+    trajectory_max_points: 5000

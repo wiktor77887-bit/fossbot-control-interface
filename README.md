@@ -25,15 +25,16 @@ Project for the *Introduction to Robotics* course at Poznań University of Techn
 
 ```mermaid
 flowchart LR
-    cam[usb_cam<br/>laptop camera] -- /user_cam/image_raw --> click[click_teleop]
-    cam -- /user_cam/image_raw --> gest[gesture_control<br/>MediaPipe]
-    click -- /cmd_vel --> robot[FOSSBot<br/>Gazebo sim or fossbot_bridge]
-    gest -- /cmd_vel --> robot
-    robot -- /odom --> gest
-    click -. /fossbot/enable_motors .-> robot
-    robot -- /odom --> dash[dashboard]
-    robot -- /camera/image_raw --> dash
-    click -- /cmd_vel --> dash
+    cam["usb_cam<br/>laptop camera"] -->|"/user_cam/image_raw"| teleop["click_teleop"]
+    cam -->|"/user_cam/image_raw"| gest["gesture_control<br/>MediaPipe"]
+    teleop -->|"/cmd_vel"| robot["FOSSBot<br/>Gazebo sim or fossbot_bridge"]
+    gest -->|"/cmd_vel"| robot
+    robot -->|"/odom"| gest
+    teleop -.->|"/fossbot/enable_motors"| robot
+    gest -.->|"/fossbot/enable_motors"| robot
+    robot -->|"/odom"| dash["dashboard"]
+    robot -->|"/camera/image_raw"| dash
+    teleop -->|"/cmd_vel"| dash
 ```
 
 The dashboard only subscribes, so it works next to any controller (click teleop,

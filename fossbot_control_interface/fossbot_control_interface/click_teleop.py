@@ -8,6 +8,7 @@ it backward. The further from the centre, the faster (optional).
 Keys in the window:  SPACE / s - stop,  q / ESC - quit.
 """
 
+import signal
 import time
 
 import cv2
@@ -18,6 +19,7 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
+from rclpy.signals import SignalHandlerOptions
 from sensor_msgs.msg import Image
 from std_srvs.srv import SetBool
 
@@ -137,6 +139,7 @@ class ClickTeleop(Node):
     def send_final_stop(self):
         for _ in range(3):
             self.cmd_pub.publish(Twist())
+            time.sleep(0.05)  # let DDS deliver before the node is destroyed
 
     # ---------------------------------------------------------------------- GUI
 
@@ -201,16 +204,22 @@ class ClickTeleop(Node):
 
 
 def main(args=None):
-    rclpy.init(args=args)
+    # Own SIGINT/SIGTERM handling: rclpy's handler would shut ROS down first, and
+    # the final zero Twist could not be published any more - the Gazebo DiffDrive
+    # would then keep driving with the last command.
+    rclpy.init(args=args, signal_handler_options=SignalHandlerOptions.NO)
     node = ClickTeleop()
+
+    def request_quit(*_):
+        node.quit_requested = True
+
+    signal.signal(signal.SIGINT, request_quit)
+    signal.signal(signal.SIGTERM, request_quit)
     try:
         while rclpy.ok() and not node.quit_requested:
             rclpy.spin_once(node, timeout_sec=0.02)
-    except KeyboardInterrupt:
-        pass
     finally:
-        if rclpy.ok():
-            node.send_final_stop()
+        node.send_final_stop()
         node.destroy_node()
         cv2.destroyAllWindows()
         rclpy.try_shutdown()

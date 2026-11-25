@@ -1,7 +1,7 @@
 """
 Click-based teleoperation for FOSSBot.
 
-Shows a window (camera image if available, a plain canvas otherwise). Clicking
+Shows a window (robot camera image if available, a plain canvas otherwise). Clicking
 above the horizontal centre line drives the robot forward, clicking below drives
 it backward. The further from the centre, the faster (optional).
 
@@ -35,7 +35,7 @@ class ClickTeleop(Node):
     def __init__(self):
         super().__init__('click_teleop')
 
-        self.image_topic = self.declare_parameter('image_topic', '/user_cam/image_raw').value
+        self.image_topic = self.declare_parameter('image_topic', '/camera/image_raw').value
         cmd_vel_topic = self.declare_parameter('cmd_vel_topic', '/cmd_vel').value
         self.max_speed = float(self.declare_parameter('max_linear_speed', 0.2).value)
         self.min_speed = float(self.declare_parameter('min_linear_speed', 0.05).value)

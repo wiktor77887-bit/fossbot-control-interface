@@ -34,7 +34,6 @@ flowchart LR
         gest["gesture_control<br/>MediaPipe"]
         dash["dashboard"]
     end
-    cam -->|"/user_cam/image_raw"| teleop
     cam -->|"/user_cam/image_raw"| gest
     teleop -->|"/cmd_vel"| robot
     gest -->|"/cmd_vel"| robot
@@ -42,6 +41,7 @@ flowchart LR
     teleop -.->|"/fossbot/enable_motors"| robot
     gest -.->|"/fossbot/enable_motors"| robot
     robot -->|"/odom"| dash
+    robot -->|"/camera/image_raw"| teleop
     robot -->|"/camera/image_raw"| dash
     teleop -->|"/cmd_vel"| dash
 ```
@@ -117,8 +117,9 @@ Use exactly **one** profile:
   IP address in `FOSSBOT_HOST` and remove that line.
 - All containers use host networking and IPC (DDS discovery, shared memory, UDP telemetry from the
   robot). The simulator limits discovery to `localhost`, so the `sim` interface does the same.
-- The laptop camera (`/dev/video0`) is published as `/user_cam/image_raw`; the robot's own camera
-  stays on `/camera/image_raw`. Without a camera set `START_CAMERA=false` and `VIDEO_DEVICE=/dev/null`.
+- The laptop camera (`/dev/video0`) is published as `/user_cam/image_raw` and used only by
+  `gesture_control`; the click window and the dashboard show the robot's own camera
+  (`/camera/image_raw`). Without a camera set `START_CAMERA=false` and `VIDEO_DEVICE=/dev/null`.
 
 Stop with `Ctrl+C` or `docker compose --profile sim --profile bridge --profile real down`.
 
@@ -221,7 +222,7 @@ Defined in [`config/params.yaml`](fossbot_control_interface/config/params.yaml).
 
 | Parameter | Default | Description |
 |---|---|---|
-| `image_topic` | `/user_cam/image_raw` | Image shown in the window |
+| `image_topic` | `/camera/image_raw` | Robot camera shown in the window |
 | `cmd_vel_topic` | `/cmd_vel` | Velocity command output |
 | `max_linear_speed` | `0.2` | Speed [m/s] at the window edge |
 | `min_linear_speed` | `0.05` | Speed [m/s] just outside the dead zone |

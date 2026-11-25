@@ -3,7 +3,7 @@
 
 click_teleop:
   ros__parameters:
-    image_topic: /user_cam/image_raw   # camera shown in the click window
+    image_topic: /camera/image_raw     # robot camera shown in the click window
     cmd_vel_topic: /cmd_vel
     max_linear_speed: 0.2              # [m/s] at the top/bottom edge of the window
     min_linear_speed: 0.05             # [m/s] just outside the dead zone
@@ -41,7 +41,7 @@ dashboard:
   ros__parameters:
     odom_topic: /odom
     cmd_vel_topic: /cmd_vel
-    image_topic: /camera/image_raw     # robot camera (the click window shows the user camera)
+    image_topic: /camera/image_raw     # robot camera
     history: 20.0                      # [s] time span of the velocity plots
     refresh_rate: 10.0                 # [Hz] GUI refresh; keep low on laptops without a GPU
     image_scale: 0.5                   # camera image is downsampled before drawing

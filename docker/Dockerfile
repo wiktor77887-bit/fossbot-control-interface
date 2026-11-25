@@ -1,15 +1,10 @@
-# Image with the FOSSBot control interface (click teleop, gestures, dashboard) + usb_cam.
+# Image with the project's own nodes: click teleop, gestures, dashboard. The robot
+# and camera drivers run in a separate container (docker/Dockerfile.drivers).
 # Built by compose.yaml; can also be built alone from the repository root:
 #   docker build -f docker/Dockerfile -t fossbot_control_interface:jazzy .
 FROM ros:jazzy
 
 SHELL ["/bin/bash", "-c"]
-
-# usb_cam is optional for the package (launch argument start_camera), so it is
-# not in package.xml; the container always has it for the laptop camera.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      ros-jazzy-usb-cam \
-    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ws
 

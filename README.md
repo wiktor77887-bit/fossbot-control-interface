@@ -18,24 +18,37 @@ Project for the *Introduction to Robotics* course at Poznań University of Techn
       in real time
 - [x] **Gesture control** – two hand gestures (MediaPipe) trigger 360° rotations,
       closed-loop on the `/odom` yaw
-- [x] **Docker Compose** – profiles `sim` (Gazebo) and `real` (+ optional `bridge`) with an
-      interface container and the laptop camera
+- [x] **Docker Compose** – profiles `sim`, `bridge` and `real`; one container for the robot
+      and camera drivers, another for the project's own nodes
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    cam["usb_cam<br/>laptop camera"] -->|"/user_cam/image_raw"| teleop["click_teleop"]
-    cam -->|"/user_cam/image_raw"| gest["gesture_control<br/>MediaPipe"]
-    teleop -->|"/cmd_vel"| robot["FOSSBot<br/>Gazebo sim or fossbot_bridge"]
+    subgraph drivers["driver container (docker/Dockerfile.drivers)"]
+        cam["usb_cam<br/>laptop camera"]
+        robot["FOSSBot<br/>Gazebo sim or fossbot_bridge"]
+    end
+    subgraph iface["interface container (docker/Dockerfile)"]
+        teleop["click_teleop"]
+        gest["gesture_control<br/>MediaPipe"]
+        dash["dashboard"]
+    end
+    cam -->|"/user_cam/image_raw"| teleop
+    cam -->|"/user_cam/image_raw"| gest
+    teleop -->|"/cmd_vel"| robot
     gest -->|"/cmd_vel"| robot
     robot -->|"/odom"| gest
     teleop -.->|"/fossbot/enable_motors"| robot
     gest -.->|"/fossbot/enable_motors"| robot
-    robot -->|"/odom"| dash["dashboard"]
+    robot -->|"/odom"| dash
     robot -->|"/camera/image_raw"| dash
     teleop -->|"/cmd_vel"| dash
 ```
+
+With Docker Compose the drivers and the project's own nodes run in separate containers that
+talk only over ROS 2 topics and services. In the `real` profile (bridge on another computer)
+the driver container runs only `usb_cam`.
 
 The dashboard only subscribes, so it works next to any controller (click teleop,
 gestures, `teleop_twist_keyboard`, Nav2).
@@ -70,26 +83,35 @@ source install/setup.bash
 
 ### With Docker Compose (recommended)
 
-Nothing to build by hand: [`compose.yaml`](compose.yaml) builds the interface image
-([`docker/Dockerfile`](docker/Dockerfile), `ros:jazzy` + `usb_cam`) and starts it next to the
-simulator or the robot bridge. Settings go to `.env`:
+[`compose.yaml`](compose.yaml) starts two containers per profile:
+
+- **drivers** ([`docker/Dockerfile.drivers`](docker/Dockerfile.drivers)) – the robot driver and
+  `usb_cam` for the laptop camera, started by
+  [`docker/drivers.launch.py`](docker/drivers.launch.py). The same Dockerfile adds `usb_cam` to
+  the simulator image, the bridge image or plain `ros:jazzy` (`BASE_IMAGE` build argument).
+- **interface** ([`docker/Dockerfile`](docker/Dockerfile), `ros:jazzy` + MediaPipe) – the nodes of
+  this package, started with `start_camera:=false`, without access to `/dev/video0`.
+
+Settings go to `.env`. The base images of the driver containers are built once:
 
 ```bash
-cp .env.example .env        # robot address, mDNS, ROS_DOMAIN_ID, camera
-xhost +local:docker         # once per login: let containers open windows
+cp .env.example .env              # robot address, mDNS, ROS_DOMAIN_ID, camera
+docker compose build sim-base     # ros2_fossbot_edu from FOSSBOT_SIM_DIR (or its build_image.sh)
+docker compose build bridge-base  # fossbot_bridge:jazzy from FOSSBOT_BRIDGE_DIR (real robot only)
+xhost +local:docker               # once per login: let containers open windows
 ```
 
-| Command | Starts |
-|---|---|
-| `docker compose --profile sim up` | Gazebo simulation (`ros2_fossbot_edu` image) + interface |
-| `docker compose --profile real --profile bridge up` | [fossbot-ros2-bridge](https://github.com/LRMPUT/fossbot-ros2-bridge) on this laptop + interface |
-| `docker compose --profile real up` | interface only, the bridge already runs on another computer |
+Use exactly **one** profile:
+
+| Command | Driver container | Interface container |
+|---|---|---|
+| `docker compose --profile sim up` | `sim`: Gazebo simulation + `usb_cam` | `interface-sim` |
+| `docker compose --profile bridge up` | `bridge`: [fossbot-ros2-bridge](https://github.com/LRMPUT/fossbot-ros2-bridge) + `usb_cam` | `interface-real` |
+| `docker compose --profile real up` | `camera`: `usb_cam` only, the bridge runs on another computer | `interface-real` |
 
 - **One bridge per robot.** The bridge for a given robot may run on only one computer at a time,
-  so it has its own `bridge` profile. Do not start it together with the bridge's own `run.sh`.
-- The bridge image is built from a checkout of its repository (`FOSSBOT_BRIDGE_DIR`, default
-  `../fossbot-ros2-bridge`), the simulator image from `FOSSBOT_SIM_DIR`; Compose builds them only
-  if they are missing.
+  so it has its own `bridge` profile. Do not start it together with the bridge's own `run.sh`,
+  and do not combine `bridge` with `real` (both would open the laptop camera).
 - **mDNS:** `.local` robot names (`FOSSBOT_HOST=fossbotrpi1.local`) need Avahi on the host and
   the `COMPOSE_FILE=compose.yaml:compose.mdns.yaml` line in `.env`. Without Avahi, put the robot's
   IP address in `FOSSBOT_HOST` and remove that line.
@@ -98,7 +120,7 @@ xhost +local:docker         # once per login: let containers open windows
 - The laptop camera (`/dev/video0`) is published as `/user_cam/image_raw`; the robot's own camera
   stays on `/camera/image_raw`. Without a camera set `START_CAMERA=false` and `VIDEO_DEVICE=/dev/null`.
 
-Stop with `Ctrl+C` or `docker compose --profile sim --profile real --profile bridge down`.
+Stop with `Ctrl+C` or `docker compose --profile sim --profile bridge --profile real down`.
 
 ### In simulation (local ROS 2)
 
@@ -260,9 +282,11 @@ runs the same tests in the `ros:jazzy` container on every push and pull request.
 ## Project structure
 
 ```
-compose.yaml                         # Docker Compose: profiles sim / real / bridge
+compose.yaml                         # Docker Compose: profiles sim / bridge / real
 compose.mdns.yaml                    # mounts the host Avahi socket for .local names
-docker/Dockerfile                    # interface image (ros:jazzy + usb_cam + MediaPipe)
+docker/Dockerfile                    # interface image (ros:jazzy + MediaPipe + this package)
+docker/Dockerfile.drivers            # driver image (BASE_IMAGE + usb_cam)
+docker/drivers.launch.py             # simulator / bridge + usb_cam in the driver container
 fossbot_control_interface/
 ├── config/params.yaml               # node parameters
 ├── launch/interface.launch.py       # starts all nodes

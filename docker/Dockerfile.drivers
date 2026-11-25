@@ -1,0 +1,22 @@
+# Driver image: the robot driver (Gazebo simulation or fossbot-ros2-bridge) plus
+# usb_cam for the laptop camera. The project's own nodes run in a separate
+# container (docker/Dockerfile). Built by compose.yaml on top of BASE_IMAGE:
+#   ros2_fossbot_edu      simulator  (FOSSBotEduSim/build_image.sh)
+#   fossbot_bridge:jazzy  real-robot bridge (fossbot-ros2-bridge)
+#   ros:jazzy             camera only, the bridge runs on another computer
+# Alone, from the repository root, e.g.:
+#   docker build -f docker/Dockerfile.drivers --build-arg BASE_IMAGE=ros2_fossbot_edu \
+#     -t fossbot_drivers:sim .
+ARG BASE_IMAGE=ros:jazzy
+FROM ${BASE_IMAGE}
+
+SHELL ["/bin/bash", "-c"]
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ros-jazzy-usb-cam \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/drivers.launch.py /drivers/drivers.launch.py
+COPY docker/drivers_entrypoint.sh /drivers/entrypoint.sh
+ENTRYPOINT ["/drivers/entrypoint.sh"]
+CMD ["ros2", "launch", "/drivers/drivers.launch.py", "robot:=none"]

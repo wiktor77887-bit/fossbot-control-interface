@@ -23,7 +23,7 @@ def make_hand(extended, rotation=0.0, scale=100.0, origin=(320.0, 400.0)):
 
 @pytest.mark.parametrize('rotation', [0.0, 0.8, -1.2, math.pi])
 def test_gestures_any_hand_rotation(rotation):
-    assert classify(make_hand({'index', 'middle'}, rotation)) == Gesture.VICTORY
+    assert classify(make_hand({'index', 'middle', 'ring'}, rotation)) == Gesture.THREE
     assert classify(make_hand({'index', 'pinky'}, rotation)) == Gesture.HORNS
     assert classify(make_hand({'index', 'middle', 'ring', 'pinky'}, rotation)) == Gesture.PALM
 
@@ -31,7 +31,8 @@ def test_gestures_any_hand_rotation(rotation):
 @pytest.mark.parametrize('extended', [
     set(),                         # fist (Lab 08: stop)
     {'index'},                     # Lab 08: forward
-    {'index', 'middle', 'ring'},
+    {'index', 'middle'},           # victory: two fingers are not THREE
+    {'middle', 'ring', 'pinky'},
     {'middle'},
     {'pinky'},
 ])
@@ -46,8 +47,8 @@ def test_no_hand_is_none():
 
 def test_debouncer_fires_once_after_hold():
     d = GestureDebouncer(hold_frames=3)
-    events = [d.update(Gesture.VICTORY) for _ in range(10)]
-    assert events == [None, None, Gesture.VICTORY] + [None] * 7
+    events = [d.update(Gesture.THREE) for _ in range(10)]
+    assert events == [None, None, Gesture.THREE] + [None] * 7
 
 
 def test_debouncer_needs_release_and_resets_on_flicker():
@@ -65,10 +66,10 @@ def test_debouncer_needs_release_and_resets_on_flicker():
 def test_debouncer_progress():
     d = GestureDebouncer(hold_frames=4)
     assert d.progress == 0.0
-    d.update(Gesture.VICTORY)
+    d.update(Gesture.THREE)
     assert d.progress == pytest.approx(0.25)
     for _ in range(3):
-        d.update(Gesture.VICTORY)
+        d.update(Gesture.THREE)
     assert d.progress == 0.0   # fired
 
 

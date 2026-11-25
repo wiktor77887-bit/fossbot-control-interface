@@ -16,6 +16,8 @@ click_teleop:
     enable_motors_on_start: false      # set by the launch file (use_real_robot:=true)
 
 gesture_control:
+  # THREE (index + middle + ring) = 360 deg left, HORNS (index + pinky) = 360 deg
+  # right, open PALM = abort. Thumb ignored; see gesture_logic.py.
   ros__parameters:
     image_topic: /user_cam/image_raw   # camera that sees the user's hand
     cmd_vel_topic: /cmd_vel
@@ -26,7 +28,8 @@ gesture_control:
     slow_zone: 0.6                     # [rad] slow down over the last ~35 deg
     angle_tolerance: 0.02              # [rad] stop when this close to 360 deg
     hold_frames: 5                     # frames a gesture must be held to trigger
-    finger_ratio: 1.2                  # tip/PIP distance from the wrist for "extended"
+    finger_ratio: 1.2                  # tip/PIP distance from the wrist for "extended";
+                                       # raise it if a half-bent pinky breaks THREE
     publish_rate: 20.0                 # [Hz] real FOSSBot stops after 0.5 s without /cmd_vel
     odom_timeout: 0.5                  # [s] abort when /odom goes silent
     rotation_timeout: 30.0             # [s] abort a rotation that takes too long

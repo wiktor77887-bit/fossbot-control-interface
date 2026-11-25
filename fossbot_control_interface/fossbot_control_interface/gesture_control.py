@@ -1,9 +1,9 @@
 """
 Gesture control for FOSSBot: two hand gestures start a 360 degree rotation.
 
-    VICTORY (index + middle finger)  -> turn 360 deg counter-clockwise (left)
-    HORNS   (index + pinky)          -> turn 360 deg clockwise (right)
-    PALM    (open hand)              -> abort the rotation
+    THREE (index + middle + ring)  -> turn 360 deg counter-clockwise (left)
+    HORNS (index + pinky)          -> turn 360 deg clockwise (right)
+    PALM  (open hand)              -> abort the rotation
 
 Hands are found with the MediaPipe hand landmarker in the user camera image
 (/user_cam/image_raw by default). The rotation is closed-loop on the yaw from
@@ -52,7 +52,7 @@ HAND_CONNECTIONS = (
     (13, 17), (17, 18), (18, 19), (19, 20), (0, 17))
 
 GESTURE_ACTION = {
-    Gesture.VICTORY: +1,   # counter-clockwise
+    Gesture.THREE: +1,     # counter-clockwise
     Gesture.HORNS: -1,     # clockwise
 }
 
@@ -162,7 +162,7 @@ class GestureControl(Node):
 
         self.get_logger().info(
             f'Gesture control ready: image={self.image_topic}, odom={odom_topic}, '
-            f'cmd_vel={cmd_vel_topic}. VICTORY = 360 deg left, HORNS = 360 deg right, '
+            f'cmd_vel={cmd_vel_topic}. THREE = 360 deg left, HORNS = 360 deg right, '
             'open PALM = abort')
 
     # ----------------------------------------------------------------- vision

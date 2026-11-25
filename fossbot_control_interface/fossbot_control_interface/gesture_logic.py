@@ -5,9 +5,9 @@ Gestures are recognised from the 21 MediaPipe hand landmarks. They are
 deliberately different from the Lab 08 set (index = forward, open hand = back,
 thumb to the side = left/right, anything else = stop):
 
-* VICTORY - index and middle finger extended, ring and pinky folded
-* HORNS   - index and pinky extended, middle and ring folded
-* PALM    - all four fingers extended (used only to abort a rotation)
+* THREE - index, middle and ring finger extended, pinky folded
+* HORNS - index and pinky extended, middle and ring folded
+* PALM  - all four fingers extended (used only to abort a rotation)
 
 The thumb is ignored: people hold it differently in these poses and it is the
 least reliable landmark.
@@ -35,7 +35,7 @@ class Gesture(Enum):
     """Recognised hand poses."""
 
     NONE = 'none'
-    VICTORY = 'victory'
+    THREE = 'three'
     HORNS = 'horns'
     PALM = 'palm'
 
@@ -65,8 +65,8 @@ def classify(points, ratio: float = 1.2) -> Gesture:
     if points is None or len(points) < 21:
         return Gesture.NONE
     pattern = fingers_extended(points, ratio)
-    if pattern == (True, True, False, False):
-        return Gesture.VICTORY
+    if pattern == (True, True, True, False):
+        return Gesture.THREE
     if pattern == (True, False, False, True):
         return Gesture.HORNS
     if pattern == (True, True, True, True):

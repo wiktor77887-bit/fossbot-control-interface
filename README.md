@@ -161,7 +161,7 @@ Start only some windows with `start_click_teleop:=false`, `start_gestures:=false
 
 | Gesture | Action |
 |---|---|
-| ✌ **Victory** – index + middle finger, ring and pinky folded | turn 360° left (counter-clockwise) |
+| 3️⃣ **Three** – index + middle + ring finger, pinky folded | turn 360° left (counter-clockwise) |
 | 🤘 **Horns** – index + pinky, middle and ring folded | turn 360° right (clockwise) |
 | ✋ **Open palm** – all four fingers | abort the rotation |
 

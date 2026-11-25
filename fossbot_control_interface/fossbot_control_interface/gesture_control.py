@@ -204,7 +204,7 @@ class GestureControl(Node):
         with self.lock:
             status = self.status
         cv2.putText(frame, status, (10, 65), font, 0.6, (0, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(frame, 'V: left 360   horns: right 360   palm/SPACE: abort   q: quit',
+        cv2.putText(frame, 'three: left 360   horns: right 360   palm/SPACE: abort   q: quit',
                     (10, h - 12), font, 0.45, (220, 220, 220), 1, cv2.LINE_AA)
         with self.lock:
             self.preview = frame
